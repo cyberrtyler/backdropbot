@@ -16,18 +16,21 @@ async def screenshot_and_crop(
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page(viewport=viewport)
         await page.emulate_media(color_scheme=theme)
-        await page.goto(url, wait_until="networkidle")
-
-        # Take screenshot of full primary column or full page
-        primary_column = await page.query_selector('div[data-testid="primaryColumn"]')
-        if primary_column:
+        await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+        
+        # Wait for the primary column to appear
+        try:
+            primary_column = await page.wait_for_selector('div[data-testid="primaryColumn"]', timeout=30000)
             screenshot_path = output_file
             await primary_column.screenshot(path=screenshot_path)
             print(f"Full profile screenshot saved to {screenshot_path}")
-        else:
-            print("Could not find primaryColumn div")
-            await browser.close()
-            return
+        except Exception as e:
+            print(f"Could not find primaryColumn div: {e}")
+            # Try alternative selectors or full page screenshot
+            print("Attempting full page screenshot instead...")
+            screenshot_path = output_file
+            await page.screenshot(path=screenshot_path)
+            print(f"Full page screenshot saved to {screenshot_path}")
 
         await browser.close()
 
